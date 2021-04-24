@@ -13,7 +13,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	cookie := string(cookieBytes)
-	acc, err := account.New(cookie, "ru-ru")
+	acc, err := account.New(cookie)
 	if err != nil {
 		log.Fatalln(err)
 	}

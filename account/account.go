@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 )
 
 const (
@@ -39,7 +40,12 @@ func (acc *Account) getSignUrl() string {
 	const OS_SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=%v"
 	return fmt.Sprintf(OS_SIGN_URL, acc.lang)
 }
-func New(cookie string, lang string) (Account, error) {
+
+var langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
+
+func New(cookie string) (Account, error) {
+	lang := langRgx.FindStringSubmatch(cookie)[1]
+	log.Panicf("lang = %v", lang)
 	return Account{cookie: cookie, lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
 }
 func (acc *Account) newRequest(method string, url string) *http.Request {
