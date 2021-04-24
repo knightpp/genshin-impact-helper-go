@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 )
 
 const (
@@ -56,8 +55,6 @@ func (acc *Account) newRequest(method string, url string) *http.Request {
 }
 func (acc *Account) SignIn() error {
 	req := acc.newRequest("POST", acc.getSignUrl())
-	form := url.Values{}
-	form.Add("act_id", ACT_ID)
 	jsonBody, err := json.Marshal(struct {
 		ActId string `json:"act_id"`
 	}{ACT_ID})
@@ -71,7 +68,10 @@ func (acc *Account) SignIn() error {
 		return fmt.Errorf("SignIn POST request error: %w", err)
 	}
 	var jsonResp SignInError
-	json.Unmarshal(body, &jsonResp)
+	err = json.Unmarshal(body, &jsonResp)
+	if err != nil {
+		return fmt.Errorf("error parsing parsing body as json: %w", err)
+	}
 	if jsonResp.Retcode != 0 || jsonResp.Data.Code != "OK" {
 		return &jsonResp
 	}
@@ -84,7 +84,10 @@ func (acc *Account) GetInfo() (InfoResponse, error) {
 	if err != nil {
 		return ir, fmt.Errorf("GetInfo request error: %w", err)
 	}
-	json.Unmarshal(body, &ir)
+	err = json.Unmarshal(body, &ir)
+	if err != nil {
+		return ir, fmt.Errorf("error parsing parsing body as json: %w", err)
+	}
 	if ir.Retcode != 0 && ir.Message != "OK" {
 		return ir, fmt.Errorf("GetInfo mihoyo error: %v", ir.Message)
 	}
@@ -97,7 +100,10 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 	if err != nil {
 		return ar, fmt.Errorf("GetAwards request error: %w", err)
 	}
-	json.Unmarshal(body, &ar)
+	err = json.Unmarshal(body, &ar)
+	if err != nil {
+		return ar, fmt.Errorf("error parsing parsing body as json: %w", err)
+	}
 	if ar.Retcode != 0 && ar.Message != "OK" {
 		return ar, fmt.Errorf("GetAwards mihoyo error: %v", ar.Message)
 	}
