@@ -18,7 +18,7 @@ const (
 
 type Account struct {
 	cookie    string
-	lang      string
+	Lang      string
 	UserAgent string
 	client    http.Client
 	// actId     string
@@ -30,15 +30,15 @@ func (acc *Account) getRefererUrl() string {
 }
 func (acc *Account) getRewardUrl() string {
 	const OS_REWARD_URL = "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=%v&act_id=%v"
-	return fmt.Sprintf(OS_REWARD_URL, acc.lang, ACT_ID)
+	return fmt.Sprintf(OS_REWARD_URL, acc.Lang, ACT_ID)
 }
 func (acc *Account) getInfoUrl() string {
 	const OS_INFO_URL = "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=%v&act_id=%v"
-	return fmt.Sprintf(OS_INFO_URL, acc.lang, ACT_ID)
+	return fmt.Sprintf(OS_INFO_URL, acc.Lang, ACT_ID)
 }
 func (acc *Account) getSignUrl() string {
 	const OS_SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=%v"
-	return fmt.Sprintf(OS_SIGN_URL, acc.lang)
+	return fmt.Sprintf(OS_SIGN_URL, acc.Lang)
 }
 
 var langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
@@ -46,7 +46,7 @@ var langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
 func New(cookie string) (Account, error) {
 	lang := langRgx.FindStringSubmatch(cookie)[1]
 	log.Panicf("lang = %v", lang)
-	return Account{cookie: cookie, lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
+	return Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
 }
 func (acc *Account) newRequest(method string, url string) *http.Request {
 	req, err := http.NewRequest(method, url, nil)
