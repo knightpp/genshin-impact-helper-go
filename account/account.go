@@ -43,10 +43,14 @@ func (acc *Account) getSignUrl() string {
 
 var langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
 
-func New(cookie string) (Account, error) {
+// var cookieRgx = regexp.MustCompile(`^account_id=[0-9]{9}; cookie_token=\w{40}; _MHYUUID=\w{8}-\w{4}-\w{4}-\w{4}-\w{12}; ltoken=\w{40}; ltuid=[0-9]{9}; login_ticket=\w{40}; mi18nLang=[a-zA-Z]{2}-[a-zA-Z]{2}$`)
+
+func New(cookie string) (*Account, error) {
 	lang := langRgx.FindStringSubmatch(cookie)[1]
-	log.Panicf("lang = %v", lang)
-	return Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
+	// if !cookieRgx.MatchString(cookie) {
+	// 	return nil, fmt.Errorf("cookie did not pass the check")
+	// }
+	return &Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
 }
 func (acc *Account) newRequest(method string, url string) *http.Request {
 	req, err := http.NewRequest(method, url, nil)
