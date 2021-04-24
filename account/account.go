@@ -82,7 +82,7 @@ func (acc *Account) SignIn() error {
 	if err != nil {
 		return fmt.Errorf("error parsing parsing body as json: %w", err)
 	}
-	if jsonResp.Retcode != 0 || jsonResp.Data.Code != "OK" {
+	if jsonResp.Retcode != 0 || jsonResp.Data.Code != "ok" || jsonResp.Message != "OK" {
 		return &jsonResp
 	}
 	return nil
