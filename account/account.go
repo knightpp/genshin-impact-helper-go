@@ -65,7 +65,7 @@ func (acc *Account) SignIn() error {
 	req.Body = io.NopCloser(bytes.NewReader(jsonBody))
 	body, err := acc.doRequest(req)
 	if err != nil {
-		return fmt.Errorf("SignIn POST request error: %w", err)
+		return fmt.Errorf("HTTP IO POST request error: %w", err)
 	}
 	var jsonResp SignInError
 	err = json.Unmarshal(body, &jsonResp)
@@ -82,14 +82,14 @@ func (acc *Account) GetInfo() (InfoResponse, error) {
 	req := acc.newRequest("GET", acc.getInfoUrl())
 	body, err := acc.doRequest(req)
 	if err != nil {
-		return ir, fmt.Errorf("GetInfo request error: %w", err)
+		return ir, fmt.Errorf("request error: %w", err)
 	}
 	err = json.Unmarshal(body, &ir)
 	if err != nil {
 		return ir, fmt.Errorf("error parsing parsing body as json: %w", err)
 	}
 	if ir.Retcode != 0 && ir.Message != "OK" {
-		return ir, fmt.Errorf("GetInfo mihoyo error: %v", ir.Message)
+		return ir, fmt.Errorf("mihoyo error: %v", ir.Message)
 	}
 	return ir, nil
 }
@@ -98,14 +98,14 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 	req := acc.newRequest("GET", acc.getRewardUrl())
 	body, err := acc.doRequest(req)
 	if err != nil {
-		return ar, fmt.Errorf("GetAwards request error: %w", err)
+		return ar, fmt.Errorf("request error: %w", err)
 	}
 	err = json.Unmarshal(body, &ar)
 	if err != nil {
 		return ar, fmt.Errorf("error parsing parsing body as json: %w", err)
 	}
 	if ar.Retcode != 0 && ar.Message != "OK" {
-		return ar, fmt.Errorf("GetAwards mihoyo error: %v", ar.Message)
+		return ar, fmt.Errorf("mihoyo error: %v", ar.Message)
 	}
 	return ar, nil
 }
