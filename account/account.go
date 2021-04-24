@@ -1,11 +1,13 @@
 package account
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -52,14 +54,28 @@ func (acc *Account) newRequest(method string, url string) *http.Request {
 	req.Header.Add("Cookie", acc.cookie)
 	return req
 }
-func (acc *Account) SignIn() ([]byte, error) {
+func (acc *Account) SignIn() error {
 	req := acc.newRequest("POST", acc.getSignUrl())
-	req.PostForm.Add("act_id", ACT_ID)
+	form := url.Values{}
+	form.Add("act_id", ACT_ID)
+	jsonBody, err := json.Marshal(struct {
+		ActId string `json:"act_id"`
+	}{ACT_ID})
+	if err != nil {
+		log.Panicf("json formatting error: %v", err)
+	}
+
+	req.Body = io.NopCloser(bytes.NewReader(jsonBody))
 	body, err := acc.doRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("SignIn POST request error: %w", err)
+		return fmt.Errorf("SignIn POST request error: %w", err)
 	}
-	return body, nil
+	var jsonResp SignInError
+	json.Unmarshal(body, &jsonResp)
+	if jsonResp.Retcode != 0 || jsonResp.Data.Code != "OK" {
+		return &jsonResp
+	}
+	return nil
 }
 func (acc *Account) GetInfo() (InfoResponse, error) {
 	var ir InfoResponse
@@ -98,6 +114,18 @@ func (acc *Account) doRequest(req *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("HTTP IO body read error: %w", err)
 	}
 	return body, nil
+}
+
+type SignInError struct {
+	Data *struct {
+		Code string `json:"code"`
+	} `json:"data"`
+	Message string `json:"message"`
+	Retcode int    `json:"retcode"`
+}
+
+func (e *SignInError) Error() string {
+	return fmt.Sprintf("json: message = %v, retcode = %v", e.Message, e.Retcode)
 }
 
 type InfoResponse struct {
