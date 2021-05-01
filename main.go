@@ -1,14 +1,16 @@
 package main
 
 import (
+	"flag"
 	"helper/account"
 	"log"
 	"os"
 )
 
 func main() {
+	path := flag.String("file", "cookie.txt", "path to cookie file")
 	log.Println("Started")
-	cookieBytes, err := os.ReadFile("cookie.txt")
+	cookieBytes, err := os.ReadFile(*path)
 	if err != nil {
 		log.Fatalln(err)
 	}
