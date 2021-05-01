@@ -9,6 +9,7 @@ import (
 
 func main() {
 	path := flag.String("file", "cookie.txt", "path to cookie file")
+	flag.Parse()
 	log.Println("Started")
 	cookieBytes, err := os.ReadFile(*path)
 	if err != nil {
