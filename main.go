@@ -56,8 +56,7 @@ func main() {
 
 	today := time.Now().In(beijing)
 	if nextDayAfterSignIn.After(today) {
-		log.Print("The site should reset at ~", nextDayAfterSignIn,
-			" but now ", today)
+		log.Print("The site should reset in ~", nextDayAfterSignIn.Sub(today))
 		return
 	}
 
