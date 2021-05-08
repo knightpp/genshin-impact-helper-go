@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"helper/account"
+	"helper/daemon"
 	"io"
 	"log"
 	"os"
@@ -43,47 +43,16 @@ func saveState(path string, t time.Time) {
 }
 
 func main() {
-	path := flag.String("file", "cookie.txt", "path to cookie file")
+	cookiePath := flag.String("file", "cookie.txt", "path to cookie file")
 	statePath := flag.String("state", "state.json", "where to save/load state data")
 	flag.Parse()
 	log.Println("Started")
-	beijing, err := time.LoadLocation("Asia/Shanghai") // "China/Beijing"
+	d := daemon.NewDaemon(*cookiePath, *statePath)
+	acc, err := d.ReadCookie()
 	if err != nil {
 		log.Fatal(err)
 	}
-	lastSignIn := loadState(*statePath)
-	nextDayAfterSignIn := lastSignIn.Add(time.Duration(24-lastSignIn.Hour()) * time.Hour)
-
-	today := time.Now().In(beijing)
-	if nextDayAfterSignIn.After(today) {
-		log.Print("The site should reset in ~", nextDayAfterSignIn.Sub(today))
-		return
-	}
-
-	cookieBytes, err := os.ReadFile(*path)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	cookie := string(cookieBytes)
-	acc, err := account.New(cookie)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	info, err := acc.GetInfo()
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Printf("GetInfo(): %+v", info)
-	if !info.Data.IsSign {
-		err = acc.SignIn()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		log.Printf("Successfully signed-in\n")
-	} else {
-		log.Println("You have already signed-in today")
-	}
-	saveState(*statePath, time.Now().In(beijing))
+	d.Run(acc)
 }
 
 // func showTotals(acc *account.Account) {
