@@ -24,7 +24,6 @@ func main() {
 	go func() {
 		for {
 			<-save
-			log.Print("Writing to file")
 			err := c.WriteToFile(configPath)
 			if err != nil {
 				log.Printf("Error writing to file: %s", err)
