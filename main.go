@@ -20,21 +20,28 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	var save chan bool
+	save := make(chan bool)
+	go func() {
+		for {
+			<-save
+			log.Print("Writing to file")
+			err := c.WriteToFile(configPath)
+			if err != nil {
+				log.Printf("Error writing to file: %s", err)
+			}
+		}
+	}()
 	wg := sync.WaitGroup{}
 	for i := range c.Account {
 		wg.Add(1)
 		go func(acc *config.AccConfig) {
-			daemon.Run(acc, save)
+			err := daemon.Run(acc, save)
+			if err != nil {
+				log.Printf("%s| error: %s", acc.Name, err)
+			}
 			wg.Done()
 		}(&c.Account[i])
 	}
-	go func() {
-		for {
-			<-save
-			c.WriteToFile(configPath)
-		}
-	}()
 	wg.Wait()
 	log.Println("No more work to do, exitting...")
 }
