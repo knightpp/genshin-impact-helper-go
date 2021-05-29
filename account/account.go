@@ -120,11 +120,13 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 	return ar, nil
 }
 
+// This function closes Body
 func (acc *Account) doRequest(req *http.Request) ([]byte, error) {
 	resp, err := acc.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP IO request error: %w", err)
 	}
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP IO body read error: %w", err)

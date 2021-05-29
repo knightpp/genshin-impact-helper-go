@@ -1,58 +1,35 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"helper/daemon"
-	"io"
+	"helper/daemon/config"
 	"log"
-	"os"
-	"time"
+	"sync"
 )
 
-func loadState(path string) time.Time {
-	file, err := os.Open(path)
-	if err != nil {
-		log.Print("Error reading state file: ", err)
-		return time.Unix(0, 0)
-	}
-	defer file.Close()
-	var t time.Time
-	err = json.NewDecoder(file).Decode(&t)
-	if err != nil {
-		log.Print("Error decoding state json: ", err)
-		return time.Unix(0, 0)
-	}
-	return t
-}
-
-func saveState(path string, t time.Time) {
-	file, err := os.Create(path)
-	if err != nil {
-		log.Print("Error creating state file: ", err)
-		return
-	}
-	defer file.Close()
-	bts, err := json.Marshal(&t)
-	if err != nil {
-		log.Print("Error encoding state json: ", err)
-		return
-	}
-	io.Copy(file, bytes.NewBuffer(bts))
-}
-
 func main() {
-	cookiePath := flag.String("file", "cookie.txt", "path to cookie file")
-	statePath := flag.String("state", "state.json", "where to save/load state data")
+	var configPath string
+	flag.StringVar(&configPath, "config", "", "path to a config.toml")
 	flag.Parse()
+	if configPath == "" {
+		log.Fatal("config path is empty")
+	}
 	log.Println("Started")
-	d := daemon.NewDaemon(*cookiePath, *statePath)
-	acc, err := d.ReadCookie()
+	c, err := config.FromFile(configPath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	d.Run(acc)
+	wg := sync.WaitGroup{}
+	for _, acc := range c.Account {
+		wg.Add(1)
+		go func(acc config.AccConfig) {
+			daemon.Run(acc)
+			wg.Done()
+		}(acc)
+	}
+	wg.Wait()
+	log.Println("No more work to do, exitting...")
 }
 
 // func showTotals(acc *account.Account) {

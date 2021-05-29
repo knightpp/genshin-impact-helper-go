@@ -1,0 +1,8 @@
+[[Account]]
+  Cookie = "cookie here"
+  LastSignIn = 0001-01-01T00:00:00Z
+  Name = "Main"
+[[Account]]
+  Cookie = "cookie here"
+  LastSignIn = 0001-01-01T00:00:00Z
+  Name = "Secondary"
