@@ -46,6 +46,14 @@ func ReadConfig(reader io.Reader) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error decoding toml config: %w", err)
 	}
+	for _, acc := range config.Account {
+		if acc.Name == "" {
+			return nil, fmt.Errorf("account name is empty")
+		}
+		if acc.Cookie == "" {
+			return nil, fmt.Errorf("accoutn cookie is empty")
+		}
+	}
 	for i := range config.Account {
 		config.Account[i].Cookie = strings.ReplaceAll(
 			config.Account[i].Cookie, "\n", "")
