@@ -10,7 +10,7 @@ import (
 )
 
 // Loops indefinitely, sleeps to the next day
-func Run(accCfg config.AccConfig) error {
+func Run(accCfg *config.AccConfig, save chan bool) error {
 	const baseSleepDur time.Duration = 60 * time.Second
 	errSleepDur := baseSleepDur
 	beijing, err := time.LoadLocation("Asia/Shanghai") // "China/Beijing"
@@ -24,7 +24,7 @@ func Run(accCfg config.AccConfig) error {
 	log.Printf("Starting %s", accCfg.Name)
 	log := log.New(os.Stderr, fmt.Sprintf("%s |", accCfg.Name),
 		log.Ltime|log.Ldate|log.Lmsgprefix)
-	lastSignIn := accCfg.LastSignIn
+	lastSignIn := &accCfg.LastSignIn
 	for {
 		nextDayAfterSignIn := lastSignIn.Add(time.Duration(24-lastSignIn.Hour()) * time.Hour)
 
@@ -56,6 +56,7 @@ func Run(accCfg config.AccConfig) error {
 		}
 		errSleepDur = baseSleepDur
 		nowBeijing := time.Now().In(beijing)
-		lastSignIn = nowBeijing
+		*lastSignIn = nowBeijing
+		save <- true
 	}
 }

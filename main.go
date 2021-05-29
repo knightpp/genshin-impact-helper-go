@@ -20,14 +20,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	var save chan bool
 	wg := sync.WaitGroup{}
-	for _, acc := range c.Account {
+	for i := range c.Account {
 		wg.Add(1)
-		go func(acc config.AccConfig) {
-			daemon.Run(acc)
+		go func(acc *config.AccConfig) {
+			daemon.Run(acc, save)
 			wg.Done()
-		}(acc)
+		}(&c.Account[i])
 	}
+	go func() {
+		for {
+			<-save
+			c.WriteToFile(configPath)
+		}
+	}()
 	wg.Wait()
 	log.Println("No more work to do, exitting...")
 }
