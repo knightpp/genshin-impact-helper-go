@@ -2,26 +2,40 @@ package account
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"regexp"
+	"time"
 )
 
 const (
-	ACT_ID = "e202102251931481"
-	// OS_ROLE_URL   = "https://api-os-takumi.mihoyo.com/auth/api/getUserAccountInfoByLToken?t=%v&ltoken=%v&uid=%v"
+	ACT_ID             = "e202102251931481"
 	DEFAULT_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150"
 )
 
+var (
+	//cookieRgx = regexp.MustCompile(`^account_id=[0-9]{9}; cookie_token=\w{40}; _MHYUUID=\w{8}-\w{4}-\w{4}-\w{4}-\w{12}; ltoken=\w{40}; ltuid=[0-9]{9}; login_ticket=\w{40}; mi18nLang=[a-zA-Z]{2}-[a-zA-Z]{2}$`)
+	langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
+)
+
 type Account struct {
-	cookie    string
 	Lang      string
 	UserAgent string
-	client    http.Client
-	// actId     string
+
+	cookie string
+	client http.Client
+}
+
+func New(cookie string) (*Account, error) {
+	lang := langRgx.FindStringSubmatch(cookie)[1]
+	// if !cookieRgx.MatchString(cookie) {
+	// 	return nil, fmt.Errorf("cookie did not pass the check")
+	// }
+	return &Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
 }
 
 func (acc *Account) getRefererUrl() string {
@@ -41,46 +55,19 @@ func (acc *Account) getSignUrl() string {
 	return fmt.Sprintf(OS_SIGN_URL, acc.Lang)
 }
 
-var langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
-
-// var cookieRgx = regexp.MustCompile(`^account_id=[0-9]{9}; cookie_token=\w{40}; _MHYUUID=\w{8}-\w{4}-\w{4}-\w{4}-\w{12}; ltoken=\w{40}; ltuid=[0-9]{9}; login_ticket=\w{40}; mi18nLang=[a-zA-Z]{2}-[a-zA-Z]{2}$`)
-
-func New(cookie string) (*Account, error) {
-	lang := langRgx.FindStringSubmatch(cookie)[1]
-	// if !cookieRgx.MatchString(cookie) {
-	// 	return nil, fmt.Errorf("cookie did not pass the check")
-	// }
-	return &Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
-}
-func (acc *Account) newRequest(method string, url string) *http.Request {
-	req, err := http.NewRequest(method, url, nil)
-	if err != nil {
-		log.Panicln(err)
-	}
-	req.Header.Add("User-Agent", acc.UserAgent)
-	req.Header.Add("Referer", acc.getRefererUrl())
-	// req.Header.Add("Accept-Encoding", "gzip, deflate, br")
-	req.Header.Add("Cookie", acc.cookie)
-	return req
-}
 func (acc *Account) SignIn() error {
-	req := acc.newRequest("POST", acc.getSignUrl())
 	jsonBody, err := json.Marshal(struct {
 		ActId string `json:"act_id"`
 	}{ACT_ID})
 	if err != nil {
-		log.Panicf("json formatting error: %v", err)
+		return fmt.Errorf("json formatting error: %v", err)
 	}
 
-	req.Body = io.NopCloser(bytes.NewReader(jsonBody))
-	body, err := acc.doRequest(req)
-	if err != nil {
-		return fmt.Errorf("HTTP IO POST request error: %w", err)
-	}
 	var jsonResp SignInError
-	err = json.Unmarshal(body, &jsonResp)
+	req := acc.newRequest("POST", acc.getSignUrl(), bytes.NewReader(jsonBody))
+	err = acc.doRequest(req, &jsonResp)
 	if err != nil {
-		return fmt.Errorf("error parsing parsing body as json: %w", err)
+		return fmt.Errorf("couldn't do HTTP request: %w", err)
 	}
 	if jsonResp.Retcode != 0 || jsonResp.Data.Code != "ok" || jsonResp.Message != "OK" {
 		return &jsonResp
@@ -89,14 +76,10 @@ func (acc *Account) SignIn() error {
 }
 func (acc *Account) GetInfo() (InfoResponse, error) {
 	var ir InfoResponse
-	req := acc.newRequest("GET", acc.getInfoUrl())
-	body, err := acc.doRequest(req)
+	req := acc.newRequest("GET", acc.getInfoUrl(), nil)
+	err := acc.doRequest(req, &ir)
 	if err != nil {
 		return ir, fmt.Errorf("request error: %w", err)
-	}
-	err = json.Unmarshal(body, &ir)
-	if err != nil {
-		return ir, fmt.Errorf("error parsing parsing body as json: %w", err)
 	}
 	if ir.Retcode != 0 && ir.Message != "OK" {
 		return ir, fmt.Errorf("mihoyo error: %v", ir.Message)
@@ -105,14 +88,10 @@ func (acc *Account) GetInfo() (InfoResponse, error) {
 }
 func (acc *Account) GetAwards() (AwardsResponse, error) {
 	var ar AwardsResponse
-	req := acc.newRequest("GET", acc.getRewardUrl())
-	body, err := acc.doRequest(req)
+	req := acc.newRequest("GET", acc.getRewardUrl(), nil)
+	err := acc.doRequest(req, &ar)
 	if err != nil {
 		return ar, fmt.Errorf("request error: %w", err)
-	}
-	err = json.Unmarshal(body, &ar)
-	if err != nil {
-		return ar, fmt.Errorf("error parsing parsing body as json: %w", err)
 	}
 	if ar.Retcode != 0 && ar.Message != "OK" {
 		return ar, fmt.Errorf("mihoyo error: %v", ar.Message)
@@ -120,18 +99,34 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 	return ar, nil
 }
 
-// This function closes Body
-func (acc *Account) doRequest(req *http.Request) ([]byte, error) {
+func (acc *Account) newRequest(method string, url string, body io.Reader) *http.Request {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		log.Panicln(err)
+	}
+	req.Header.Add("User-Agent", acc.UserAgent)
+	req.Header.Add("Referer", acc.getRefererUrl())
+	req.Header.Add("Cookie", acc.cookie)
+	return req
+}
+
+func (acc *Account) doRequest(req *http.Request, out interface{}) error {
 	resp, err := acc.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("HTTP IO request error: %w", err)
+		return fmt.Errorf("HTTP IO request error: %w", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("HTTP IO body read error: %w", err)
+		return fmt.Errorf("HTTP IO body read error: %w", err)
 	}
-	return body, nil
+	err = json.Unmarshal(body, out)
+	if err != nil {
+		return fmt.Errorf("couldn't parse JSON: %w", err)
+	}
+	return nil
 }
 
 type SignInError struct {
