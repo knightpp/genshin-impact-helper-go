@@ -1,6 +1,6 @@
 # Maintainer: Danil Kondratiev <knightpp@protonmail.com>
 pkgname=gi-helper-git
-pkgver=r9.4609559
+pkgver=r21.3214551
 pkgrel=1
 pkgdesc="Genshin impact auto sign-in helper"
 arch=(x86_64)
@@ -8,20 +8,19 @@ url="http://github.com/knightpp/genshin-impact-helper-go"
 license=('MIT')
 depends=('glibc')
 makedepends=('go' 'git')
-source=("${pkgname%-git}::git+https://github.com/knightpp/genshin-impact-helper-go.git")
 md5sums=('SKIP')
 
 pkgver() {
-	cd "$srcdir/${pkgname%-git}" || exit
+	cd ..
 	printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 
 package() {
-	cd "$srcdir/${pkgname%-git}" || exit
+	cd ../..
 	
 	export GOFLAGS='-buildmode=pie'
 	export CGO_CPPFLAGS="-D_FORTIFY_SOURCE=2"
 	export CGO_LDFLAGS="-Wl,-z,relro,-z,now"
 	
-	go build -o "${pkgdir}/usr/bin/${pkgname%-git}"
+	go build -o "${pkgdir}"/usr/bin/"${pkgname%-git}"
 }

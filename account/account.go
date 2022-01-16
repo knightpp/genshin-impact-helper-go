@@ -2,14 +2,12 @@ package account
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"regexp"
-	"time"
 )
 
 const (
@@ -100,9 +98,7 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 }
 
 func (acc *Account) newRequest(method string, url string, body io.Reader) *http.Request {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		log.Panicln(err)
 	}
