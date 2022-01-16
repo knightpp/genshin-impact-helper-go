@@ -5,10 +5,13 @@ import (
 	"helper/daemon"
 	"helper/daemon/config"
 	"log"
+	"os"
 	"sync"
 )
 
 func main() {
+	log.SetOutput(os.Stdout)
+
 	var configPath string
 	flag.StringVar(&configPath, "config", "", "path to a config.toml")
 	flag.Parse()
