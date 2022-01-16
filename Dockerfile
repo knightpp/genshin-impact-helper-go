@@ -12,6 +12,7 @@ RUN go build -o /gi-helper
 
 FROM docker.io/alpine
 
+RUN apk add --no-cache curl
 COPY --from=build /gi-helper /bin/gi-helper
 
 CMD [ "/bin/gi-helper" ]
