@@ -17,7 +17,7 @@ func Run(accCfg *config.AccConfig, save chan bool) error {
 	if err != nil {
 		return fmt.Errorf("couldn't load Beijing timezone: %w", err)
 	}
-	acc, err := account.New(accCfg.Cookie)
+	acc := account.New(accCfg.Cookie)
 	if err != nil {
 		return fmt.Errorf("couldn't create account struct: %w", err)
 	}

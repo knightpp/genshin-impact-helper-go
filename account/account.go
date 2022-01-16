@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"regexp"
 )
@@ -28,12 +27,9 @@ type Account struct {
 	client http.Client
 }
 
-func New(cookie string) (*Account, error) {
+func New(cookie string) *Account {
 	lang := langRgx.FindStringSubmatch(cookie)[1]
-	// if !cookieRgx.MatchString(cookie) {
-	// 	return nil, fmt.Errorf("cookie did not pass the check")
-	// }
-	return &Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}, nil
+	return &Account{cookie: cookie, Lang: lang, UserAgent: DEFAULT_USER_AGENT}
 }
 
 func (acc *Account) getRefererUrl() string {
@@ -100,7 +96,7 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 func (acc *Account) newRequest(method string, url string, body io.Reader) *http.Request {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		log.Panicln(err)
+		panic(err)
 	}
 	req.Header.Add("User-Agent", acc.UserAgent)
 	req.Header.Add("Referer", acc.getRefererUrl())
