@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"helper/account"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -49,6 +53,7 @@ func handler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if !info.Data.IsSign {
+		log.Info("going to sign-in")
 		err = acc.SignIn()
 		if err != nil {
 			errorInternalServer(err, "sign-in failed")
@@ -56,6 +61,7 @@ func handler(rw http.ResponseWriter, r *http.Request) {
 		}
 		rw.WriteHeader(http.StatusOK)
 	} else {
+		log.Info("you've already signed-in")
 		rw.WriteHeader(http.StatusNotModified)
 	}
 }
@@ -79,9 +85,26 @@ func main() {
 	log.Infof("running server on %s port", port)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/check-in", handler)
-	err = http.ListenAndServe("0.0.0.0:"+port, mux)
+	srv := http.Server{
+		Addr:         "0.0.0.0:" + port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	go func() {
+		err := srv.ListenAndServe()
+		switch err {
+		case http.ErrServerClosed:
+		default:
+			log.Fatal(err)
+		}
+	}()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM)
+	<-sig
+	err = srv.Shutdown(context.Background())
 	if err != nil {
-		log.Fatal(err)
-		return
+		log.Fatal("couldn't shutdown properly", err)
 	}
 }
