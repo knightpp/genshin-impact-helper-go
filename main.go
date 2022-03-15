@@ -1,63 +1,110 @@
 package main
 
 import (
-	"flag"
-	"helper/daemon"
-	"helper/daemon/config"
-	"log"
+	"context"
+	"net/http"
 	"os"
-	"sync"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/knightpp/genshin-impact-helper-go/account"
+	"go.uber.org/zap"
 )
 
-func main() {
-	log.SetOutput(os.Stdout)
+var log = zap.S()
 
-	var configPath string
-	flag.StringVar(&configPath, "config", "", "path to a config.toml")
-	flag.Parse()
-	if configPath == "" {
-		log.Fatal("config path is empty")
+func handler(rw http.ResponseWriter, r *http.Request) {
+	log := log.With("user-agent", r.UserAgent(), "remote-addr", r.RemoteAddr)
+	errorInternalServer := func(err error, msg string) {
+		log.With(err).Error(msg)
+		status := http.StatusInternalServerError
+		http.Error(rw, http.StatusText(status), status)
 	}
-	log.Println("Started")
-	c, err := config.FromFile(configPath)
+	errorBadRequest := func(err error, msg string) {
+		log.With(err).Error(msg)
+		status := http.StatusBadRequest
+		http.Error(rw, http.StatusText(status), status)
+	}
+
+	log.Debug("new connection")
+	if r.Method != http.MethodGet {
+		errorBadRequest(nil, "unexpected method: "+r.Method)
+		return
+	}
+
+	err := r.ParseForm()
 	if err != nil {
-		log.Fatal(err)
+		errorBadRequest(err, "parse form failed")
+		return
 	}
-	save := make(chan bool)
-	go func() {
-		for {
-			<-save
-			err := c.WriteToFile(configPath)
-			if err != nil {
-				log.Printf("Error writing to file: %s", err)
-			}
+
+	cookie := r.FormValue("cookie")
+	if cookie == "" {
+		errorBadRequest(nil, "empty cookie")
+		return
+	}
+
+	acc := account.New(cookie)
+	info, err := acc.GetInfo()
+	if err != nil {
+		errorInternalServer(err, "GetInfo failed")
+		return
+	}
+
+	if !info.Data.IsSign {
+		log.Info("going to sign-in")
+		err = acc.SignIn()
+		if err != nil {
+			errorInternalServer(err, "sign-in failed")
+			return
 		}
-	}()
-	wg := sync.WaitGroup{}
-	for i := range c.Account {
-		wg.Add(1)
-		go func(acc *config.AccConfig) {
-			err := daemon.Run(acc, save)
-			if err != nil {
-				log.Printf("%s| error: %s", acc.Name, err)
-			}
-			wg.Done()
-		}(&c.Account[i])
+		rw.WriteHeader(http.StatusOK)
+	} else {
+		log.Info("you've already signed-in")
+		rw.WriteHeader(http.StatusNotModified)
 	}
-	wg.Wait()
-	log.Println("No more work to do, exitting...")
 }
 
-// func showTotals(acc *account.Account) {
-// 	awards, err := acc.GetAwards()
-// 	if err != nil {
-// 		log.Fatalln(err)
-// 	}
-// 	totals := make(map[string]int)
-// 	for _, a := range awards.Data.Awards {
-// 		totals[a.Name] += a.Count
-// 	}
-// 	for name, count := range totals {
-// 		fmt.Printf("%30v: %5v\n", name, count)
-// 	}
-// }
+func main() {
+	config := zap.NewProductionConfig()
+	config.Level.SetLevel(zap.DebugLevel)
+	config.DisableStacktrace = true
+	logger, err := config.Build()
+	if err != nil {
+		zap.L().With(zap.Error(err)).Fatal("couldn't build logger")
+	}
+	log = logger.Sugar()
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("enviromental variable PORT is empty")
+		return
+	}
+
+	log.Infof("running server on %s port", port)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/check-in", handler)
+	srv := http.Server{
+		Addr:         "0.0.0.0:" + port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+	go func() {
+		err := srv.ListenAndServe()
+		switch err {
+		case http.ErrServerClosed:
+		default:
+			log.Fatal(err)
+		}
+	}()
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
+	<-sig
+	err = srv.Shutdown(context.Background())
+	if err != nil {
+		log.Fatal("couldn't shutdown properly", err)
+	}
+}
