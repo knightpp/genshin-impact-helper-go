@@ -14,10 +14,8 @@ const (
 	DEFAULT_USER_AGENT = "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E150"
 )
 
-var (
-	//cookieRgx = regexp.MustCompile(`^account_id=[0-9]{9}; cookie_token=\w{40}; _MHYUUID=\w{8}-\w{4}-\w{4}-\w{4}-\w{12}; ltoken=\w{40}; ltuid=[0-9]{9}; login_ticket=\w{40}; mi18nLang=[a-zA-Z]{2}-[a-zA-Z]{2}$`)
-	langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
-)
+// cookieRgx = regexp.MustCompile(`^account_id=[0-9]{9}; cookie_token=\w{40}; _MHYUUID=\w{8}-\w{4}-\w{4}-\w{4}-\w{12}; ltoken=\w{40}; ltuid=[0-9]{9}; login_ticket=\w{40}; mi18nLang=[a-zA-Z]{2}-[a-zA-Z]{2}$`)
+var langRgx = regexp.MustCompile("mi18nLang=([a-zA-Z]{2}-[a-zA-Z]{2})")
 
 type Account struct {
 	Lang      string
@@ -36,14 +34,17 @@ func (acc *Account) getRefererUrl() string {
 	const OS_REFERER_URL = "https://webstatic-sea.mihoyo.com/ys/event/signin-sea/index.html?act_id=%v"
 	return fmt.Sprintf(OS_REFERER_URL, ACT_ID)
 }
+
 func (acc *Account) getRewardUrl() string {
 	const OS_REWARD_URL = "https://hk4e-api-os.mihoyo.com/event/sol/home?lang=%v&act_id=%v"
 	return fmt.Sprintf(OS_REWARD_URL, acc.Lang, ACT_ID)
 }
+
 func (acc *Account) getInfoUrl() string {
 	const OS_INFO_URL = "https://hk4e-api-os.mihoyo.com/event/sol/info?lang=%v&act_id=%v"
 	return fmt.Sprintf(OS_INFO_URL, acc.Lang, ACT_ID)
 }
+
 func (acc *Account) getSignUrl() string {
 	const OS_SIGN_URL = "https://hk4e-api-os.mihoyo.com/event/sol/sign?lang=%v"
 	return fmt.Sprintf(OS_SIGN_URL, acc.Lang)
@@ -68,6 +69,7 @@ func (acc *Account) SignIn() error {
 	}
 	return nil
 }
+
 func (acc *Account) GetInfo() (InfoResponse, error) {
 	var ir InfoResponse
 	req := acc.newRequest("GET", acc.getInfoUrl(), nil)
@@ -80,6 +82,7 @@ func (acc *Account) GetInfo() (InfoResponse, error) {
 	}
 	return ir, nil
 }
+
 func (acc *Account) GetAwards() (AwardsResponse, error) {
 	var ar AwardsResponse
 	req := acc.newRequest("GET", acc.getRewardUrl(), nil)
@@ -93,7 +96,7 @@ func (acc *Account) GetAwards() (AwardsResponse, error) {
 	return ar, nil
 }
 
-func (acc *Account) newRequest(method string, url string, body io.Reader) *http.Request {
+func (acc *Account) newRequest(method, url string, body io.Reader) *http.Request {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		panic(err)

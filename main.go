@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"helper/account"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/knightpp/genshin-impact-helper-go/account"
 	"go.uber.org/zap"
 )
 

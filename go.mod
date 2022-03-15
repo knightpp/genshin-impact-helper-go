@@ -1,9 +1,10 @@
-module helper
+module github.com/knightpp/genshin-impact-helper-go
 
-go 1.16
+go 1.18
+
+require go.uber.org/zap v1.21.0
 
 require (
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
-	go.uber.org/zap v1.20.0
+	go.uber.org/multierr v1.8.0 // indirect
 )
